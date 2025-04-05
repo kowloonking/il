@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>離線資料記錄</title>
+    <!-- 設定為 Web App 並支援離線 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .number-input {
+            font-size: 2em;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .text-input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        .remarks {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+        .save-btn {
+            width: 100%;
+            padding: 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+        }
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            width: 50%;
+        }
+        .tab button.active {
+            background-color: #ccc;
+        }
+        .tabcontent {
+            display: none;
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-top: none;
+        }
+        .entry {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- 標籤頁切換 -->
+    <div class="tab">
+        <button class="tablinks active" onclick="openTab(event, 'Input')">輸入</button>
+        <button class="tablinks" onclick="openTab(event, 'View')">查看</button>
+    </div>
+
+    <!-- 輸入頁面 -->
+    <div id="Input" class="tabcontent" style="display: block;">
+        <input type="number" class="number-input" id="numberInput" placeholder="輸入數字" required>
+        <input type="text" class="text-input" id="textInput" placeholder="輸入文字">
+        <button class="save-btn" onclick="saveData()">儲存</button>
+        <textarea class="remarks" id="remarks" placeholder="備註"></textarea>
+    </div>
+
+    <!-- 查看頁面 -->
+    <div id="View" class="tabcontent">
+        <div id="dataList"></div>
+    </div>
+
+    <script>
+        // 檢查是否支援地理定位
+        let geolocationAvailable = 'geolocation' in navigator;
+
+        // 載入儲存的資料
+        let entries = JSON.parse(localStorage.getItem('entries')) || [];
+
+        // 顯示儲存的資料
+        function loadData() {
+            const dataList = document.getElementById('dataList');
+            dataList.innerHTML = '';
+            entries.forEach((entry, index) => {
+                const div = document.createElement('div');
+                div.className = 'entry';
+                div.innerHTML = `
+                    <h2>${entry.number}</h2>
+                    <p>${entry.text || ''}</p>
+                    <p>${entry.remarks || ''}</p>
+                    <small>時間: ${entry.time}</small><br>
+                    <small>位置: ${entry.location || '未記錄'}</small><br>
+                    <button onclick="deleteEntry(${index})">刪除</button>
+                `;
+                dataList.appendChild(div);
+            });
+        }
+
+        // 儲存資料
+        function saveData() {
+            const number = document.getElementById('numberInput').value;
+            const text = document.getElementById('textInput').value;
+            const remarks = document.getElementById('remarks').value;
+
+            if (!number) {
+                alert('請輸入數字');
+                return;
+            }
+
+            const time = new Date().toLocaleString('zh-TW');
+            let entry = { number, text, remarks, time };
+
+            if (geolocationAvailable) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        entry.location = `${position.coords.latitude}, ${position.coords.longitude}`;
+                        entries.push(entry);
+                        localStorage.setItem('entries', JSON.stringify(entries));
+                        loadData();
+                        clearInputs();
+                    },
+                    () => {
+                        entry.location = '無法獲取位置';
+                        entries.push(entry);
+                        localStorage.setItem('entries', JSON.stringify(entries));
+                        loadData();
+                        clearInputs();
+                    }
+                );
+            } else {
+                entry.location = '地理定位不可用';
+                entries.push(entry);
+                localStorage.setItem('entries', JSON.stringify(entries));
+                loadData();
+                clearInputs();
+            }
+        }
+
+        // 清空輸入框
+        function clearInputs() {
+            document.getElementById('numberInput').value = '';
+            document.getElementById('textInput').value = '';
+            document.getElementById('remarks').value = '';
+        }
+
+        // 刪除資料
+        function deleteEntry(index) {
+            entries.splice(index, 1);
+            localStorage.setItem('entries', JSON.stringify(entries));
+            loadData();
+        }
+
+        // 標籤頁切換
+        function openTab(evt, tabName) {
+            const tabcontent = document.getElementsByClassName('tabcontent');
+            for (let i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = 'none';
+            }
+            const tablinks = document.getElementsByClassName('tablinks');
+            for (let i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(' active', '');
+            }
+            document.getElementById(tabName).style.display = 'block';
+            evt.currentTarget.className += ' active';
+            if (tabName === 'View') loadData();
+        }
+
+        // 初始化載入資料
+        loadData();
+    </script>
+</body>
+</html>
