@@ -17,11 +17,19 @@
             font-size: 1.5em;
             margin-bottom: 20px;
         }
+        .number-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
         .number-input {
             font-size: 2em;
-            width: 100%;
+            flex: 2;
             padding: 10px;
-            margin-bottom: 10px;
+        }
+        .unit-select {
+            flex: 1;
+            padding: 10px;
         }
         .text-row {
             display: flex;
@@ -72,6 +80,9 @@
             border: 1px solid #ccc;
             border-top: none;
         }
+        .view-controls {
+            margin-bottom: 10px;
+        }
         .category-section {
             margin-bottom: 20px;
         }
@@ -80,14 +91,22 @@
             border-bottom: 1px solid #ddd;
             padding: 10px 0;
         }
-        .entry div {
+        .entry.simple div {
             flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
         }
-        .entry button {
-            flex: 0 0 60px;
+        .entry.detailed {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+        }
+        .entry.detailed div {
+            flex: 0 0 100px;
+            min-width: 100px;
+        }
+        .edit-form {
+            display: none;
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -100,7 +119,10 @@
     </div>
 
     <div id="Input" class="tabcontent" style="display: block;">
-        <input type="number" class="number-input" id="numberInput" placeholder="輸入數字" required>
+        <div class="number-row">
+            <input type="number" class="number-input" id="numberInput" placeholder="*輸入數字" required>
+            <select class="unit-select" id="unitSelect"></select>
+        </div>
         <div class="text-row">
             <input type="text" class="text-input" id="textInput" placeholder="輸入文字">
             <select class="category-select" id="categorySelect"></select>
@@ -110,7 +132,23 @@
     </div>
 
     <div id="View" class="tabcontent">
+        <div class="view-controls">
+            <label>顯示模式: </label>
+            <input type="radio" name="viewMode" value="simple" checked onchange="loadData()"> 簡潔
+            <input type="radio" name="viewMode" value="detailed" onchange="loadData()"> 詳細
+        </div>
         <div id="dataList"></div>
+        <div id="editForm" class="edit-form">
+            <h3>編輯資料</h3>
+            <input type="number" id="editNumber" placeholder="*輸入數字" required>
+            <select id="editUnit"></select>
+            <input type="text" id="editText" placeholder="輸入文字">
+            <select id="editCategory"></select>
+            <textarea id="editRemarks" placeholder="備註"></textarea>
+            <button onclick="saveEdit()">儲存</button>
+            <button onclick="deleteEdit()">刪除</button>
+            <button onclick="cancelEdit()">取消</button>
+        </div>
     </div>
 
     <script>
@@ -118,10 +156,47 @@
         let entries = JSON.parse(localStorage.getItem('entries')) || [];
         let categories = JSON.parse(localStorage.getItem('categories')) || ['生活'];
         let lastCategory = localStorage.getItem('lastCategory') || '生活';
+        let units = JSON.parse(localStorage.getItem('units')) || ['金額', '時間', 'HKD', 'JPY', 'USD', 'EUR', 'RMB', 'TWD'];
+        let lastUnit = localStorage.getItem('lastUnit') || '金額';
+        let editIndex = -1;
+
+        // 初始化單位選項
+        function loadUnits(selectId) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '';
+            units.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = unit;
+                option.text = unit;
+                if (unit === lastUnit) option.selected = true;
+                select.appendChild(option);
+            });
+            const addOption = document.createElement('option');
+            addOption.value = 'add';
+            addOption.text = '新增單位';
+            select.appendChild(addOption);
+        }
+
+        // 處理單位選擇
+        document.getElementById('unitSelect').addEventListener('change', function() {
+            if (this.value === 'add') {
+                const newUnit = prompt('輸入新單位名稱：');
+                if (newUnit && !units.includes(newUnit)) {
+                    units.push(newUnit);
+                    localStorage.setItem('units', JSON.stringify(units));
+                    loadUnits('unitSelect');
+                    this.value = newUnit;
+                } else {
+                    this.value = lastUnit;
+                }
+            }
+            lastUnit = this.value;
+            localStorage.setItem('lastUnit', lastUnit);
+        });
 
         // 初始化分類選項
-        function loadCategories() {
-            const select = document.getElementById('categorySelect');
+        function loadCategories(selectId) {
+            const select = document.getElementById(selectId);
             select.innerHTML = '';
             categories.forEach(cat => {
                 const option = document.createElement('option');
@@ -143,7 +218,7 @@
                 if (newCat && !categories.includes(newCat)) {
                     categories.push(newCat);
                     localStorage.setItem('categories', JSON.stringify(categories));
-                    loadCategories();
+                    loadCategories('categorySelect');
                     this.value = newCat;
                 } else {
                     this.value = lastCategory;
@@ -157,6 +232,7 @@
         function loadData() {
             const dataList = document.getElementById('dataList');
             dataList.innerHTML = '';
+            const viewMode = document.querySelector('input[name="viewMode"]:checked').value;
             const grouped = entries.reduce((acc, entry) => {
                 acc[entry.category] = acc[entry.category] || [];
                 acc[entry.category].push(entry);
@@ -170,15 +246,24 @@
                 grouped[category].forEach((entry, index) => {
                     const globalIndex = entries.indexOf(entry);
                     const div = document.createElement('div');
-                    div.className = 'entry';
-                    div.innerHTML = `
-                        <div>${entry.number}</div>
-                        <div>${entry.text || ''}</div>
-                        <div>${entry.remarks || ''}</div>
-                        <div>${entry.time}</div>
-                        <div>${entry.location || '未記錄'}</div>
-                        <button onclick="deleteEntry(${globalIndex})">刪除</button>
-                    `;
+                    div.className = `entry ${viewMode}`;
+                    div.onclick = () => editEntry(globalIndex);
+                    if (viewMode === 'simple') {
+                        div.innerHTML = `
+                            <div>${entry.number} ${entry.unit}</div>
+                            <div>${entry.text || ''}</div>
+                            <div>${entry.time}</div>
+                        `;
+                    } else {
+                        div.innerHTML = `
+                            <div>${entry.number}</div>
+                            <div>${entry.unit}</div>
+                            <div>${entry.text || ''}</div>
+                            <div>${entry.remarks || ''}</div>
+                            <div>${entry.time}</div>
+                            <div>${entry.location || '未記錄'}</div>
+                        `;
+                    }
                     section.appendChild(div);
                 });
                 dataList.appendChild(section);
@@ -188,6 +273,7 @@
         // 儲存資料
         function saveData() {
             const number = document.getElementById('numberInput').value;
+            const unit = document.getElementById('unitSelect').value;
             const text = document.getElementById('textInput').value;
             const remarks = document.getElementById('remarks').value;
             const category = document.getElementById('categorySelect').value;
@@ -198,7 +284,7 @@
             }
 
             const time = new Date().toLocaleString('zh-TW');
-            let entry = { number, text, remarks, category, time };
+            let entry = { number, unit, text, remarks, category, time };
 
             if (geolocationAvailable) {
                 navigator.geolocation.getCurrentPosition(
@@ -233,11 +319,51 @@
             document.getElementById('remarks').value = '';
         }
 
-        // 刪除資料
-        function deleteEntry(index) {
-            entries.splice(index, 1);
+        // 編輯資料
+        function editEntry(index) {
+            editIndex = index;
+            const entry = entries[index];
+            document.getElementById('editNumber').value = entry.number;
+            loadUnits('editUnit');
+            document.getElementById('editUnit').value = entry.unit;
+            document.getElementById('editText').value = entry.text || '';
+            loadCategories('editCategory');
+            document.getElementById('editCategory').value = entry.category;
+            document.getElementById('editRemarks').value = entry.remarks || '';
+            document.getElementById('editForm').style.display = 'block';
+        }
+
+        // 儲存編輯
+        function saveEdit() {
+            if (editIndex === -1) return;
+            const number = document.getElementById('editNumber').value;
+            const unit = document.getElementById('editUnit').value;
+            const text = document.getElementById('editText').value;
+            const category = document.getElementById('editCategory').value;
+            const remarks = document.getElementById('editRemarks').value;
+            if (!number) {
+                alert('請輸入數字');
+                return;
+            }
+            entries[editIndex] = { ...entries[editIndex], number, unit, text, category, remarks };
             localStorage.setItem('entries', JSON.stringify(entries));
             loadData();
+            cancelEdit();
+        }
+
+        // 刪除編輯
+        function deleteEdit() {
+            if (editIndex === -1) return;
+            entries.splice(editIndex, 1);
+            localStorage.setItem('entries', JSON.stringify(entries));
+            loadData();
+            cancelEdit();
+        }
+
+        // 取消編輯
+        function cancelEdit() {
+            editIndex = -1;
+            document.getElementById('editForm').style.display = 'none';
         }
 
         // 標籤頁切換
@@ -256,7 +382,8 @@
         }
 
         // 初始化
-        loadCategories();
+        loadUnits('unitSelect');
+        loadCategories('categorySelect');
         loadData();
     </script>
 </body>
