@@ -1,6 +1,6 @@
 {
-    "name": "資料記錄",
-    "short_name": "記錄",
+    "name": "無量簿",
+    "short_name": "無量",
     "start_url": "index.html",
     "display": "standalone",
     "background_color": "#ffffff",
