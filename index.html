@@ -19,35 +19,35 @@
         }
         .number-row, .text-row {
             display: flex;
-            gap: 10px;
+            gap: 8px; /* 減小間距 */
             margin-bottom: 10px;
         }
         .number-input {
-            font-size: 1.5em; /* 減小字體以適應手機螢幕 */
-            flex: 3; /* 與輸入文字對齊 */
-            padding: 8px; /* 統一內邊距 */
-            box-sizing: border-box; /* 確保寬度包含內邊距 */
+            font-size: 1.2em; /* 進一步減小字體 */
+            flex: 2; /* 調整比例 */
+            padding: 6px; /* 減小內邊距 */
+            box-sizing: border-box;
         }
         .unit-select {
-            flex: 2; /* 與分類對齊 */
-            padding: 8px;
+            flex: 1; /* 減小比例 */
+            padding: 6px;
             box-sizing: border-box;
         }
         .text-input {
-            flex: 3; /* 與數字對齊 */
-            padding: 8px;
+            flex: 2;
+            padding: 6px;
             box-sizing: border-box;
         }
         .category-select {
-            flex: 2; /* 與單位對齊 */
-            padding: 8px;
+            flex: 1;
+            padding: 6px;
             box-sizing: border-box;
         }
         .remarks {
             width: 100%;
             height: 100px;
             margin-bottom: 10px;
-            padding: 8px;
+            padding: 6px;
             box-sizing: border-box;
         }
         .save-btn {
@@ -119,6 +119,19 @@
         .view-controls button {
             margin-right: 10px;
         }
+        /* 手機螢幕適配 */
+        @media (max-width: 600px) {
+            .number-input {
+                font-size: 1em; /* 小螢幕再減小 */
+                padding: 4px;
+            }
+            .unit-select, .text-input, .category-select {
+                padding: 4px;
+            }
+            .number-row, .text-row {
+                gap: 5px; /* 更小的間距 */
+            }
+        }
     </style>
 </head>
 <body>
@@ -175,7 +188,6 @@
         let editIndex = -1;
         let selectedEntry = null;
 
-        // 格式化日期為 YYYY-MM-DD HH:MM:SS
         function formatDate(date) {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -186,7 +198,6 @@
             return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
         }
 
-        // 初始化單位選項
         function loadUnits(selectId) {
             const select = document.getElementById(selectId);
             select.innerHTML = '';
@@ -203,7 +214,6 @@
             select.appendChild(addOption);
         }
 
-        // 處理單位選擇
         document.getElementById('unitSelect').addEventListener('change', function() {
             if (this.value === 'add') {
                 const newUnit = prompt('輸入新單位名稱：');
@@ -220,7 +230,6 @@
             localStorage.setItem('lastUnit', lastUnit);
         });
 
-        // 初始化分類選項
         function loadCategories(selectId) {
             const select = document.getElementById(selectId);
             select.innerHTML = '';
@@ -237,7 +246,6 @@
             select.appendChild(addOption);
         }
 
-        // 處理分類選擇
         document.getElementById('categorySelect').addEventListener('change', function() {
             if (this.value === 'add') {
                 const newCat = prompt('輸入新分類名稱：');
@@ -254,7 +262,6 @@
             localStorage.setItem('lastCategory', lastCategory);
         });
 
-        // 顯示儲存的資料
         function loadData() {
             const dataList = document.getElementById('dataList');
             dataList.innerHTML = '';
@@ -300,7 +307,6 @@
             });
         }
 
-        // 儲存資料
         function saveData() {
             const number = document.getElementById('numberInput').value;
             const unit = document.getElementById('unitSelect').value;
@@ -342,14 +348,12 @@
             }
         }
 
-        // 清空輸入框
         function clearInputs() {
             document.getElementById('numberInput').value = '';
             document.getElementById('textInput').value = '';
             document.getElementById('remarks').value = '';
         }
 
-        // 編輯資料
         function editEntry(index) {
             editIndex = index;
             const entry = entries[index];
@@ -363,7 +367,6 @@
             document.getElementById('editForm').style.display = 'block';
         }
 
-        // 儲存編輯
         function saveEdit() {
             if (editIndex === -1) return;
             const number = document.getElementById('editNumber').value;
@@ -381,7 +384,6 @@
             cancelEdit();
         }
 
-        // 刪除編輯
         function deleteEdit() {
             if (editIndex === -1) return;
             entries.splice(editIndex, 1);
@@ -390,14 +392,12 @@
             cancelEdit();
         }
 
-        // 取消編輯
         function cancelEdit() {
             editIndex = -1;
             selectedEntry = null;
             document.getElementById('editForm').style.display = 'none';
         }
 
-        // 匯出資料
         function exportData() {
             const now = new Date();
             const filename = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')} Immeasurable Ledger.csv`;
@@ -420,7 +420,6 @@
             link.click();
         }
 
-        // 匯入資料
         function importData(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -445,7 +444,6 @@
             reader.readAsText(file);
         }
 
-        // 清空資料
         function clearData() {
             if (confirm('確定要清空所有資料嗎？此操作無法恢復！\n是否先匯出資料作為備份？')) {
                 exportData();
@@ -466,7 +464,6 @@
             }
         }
 
-        // 標籤頁切換
         function openTab(evt, tabName) {
             const tabcontent = document.getElementsByClassName('tabcontent');
             for (let i = 0; i < tabcontent.length; i++) {
@@ -481,7 +478,6 @@
             if (tabName === 'View') loadData();
         }
 
-        // 初始化
         loadUnits('unitSelect');
         loadCategories('categorySelect');
         loadData();
