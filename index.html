@@ -99,8 +99,11 @@
             overflow-x: auto;
         }
         .entry.detailed div {
-            flex: 0 0 100px;
-            min-width: 100px;
+            flex: 0 0 120px; /* 增加寬度以顯示更多內容 */
+            min-width: 120px;
+            white-space: normal; /* 允許換行，避免重疊 */
+            word-wrap: break-word; /* 長詞換行 */
+            padding: 5px; /* 添加內邊距以提高可讀性 */
         }
         .edit-form {
             display: none;
@@ -159,6 +162,17 @@
         let units = JSON.parse(localStorage.getItem('units')) || ['金額', '時間', 'HKD', 'JPY', 'USD', 'EUR', 'RMB', 'TWD'];
         let lastUnit = localStorage.getItem('lastUnit') || '金額';
         let editIndex = -1;
+
+        // 格式化日期為 YYYY-MM-DD HH:MM:SS
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
 
         // 初始化單位選項
         function loadUnits(selectId) {
@@ -283,7 +297,7 @@
                 return;
             }
 
-            const time = new Date().toLocaleString('zh-TW');
+            const time = formatDate(new Date());
             let entry = { number, unit, text, remarks, category, time };
 
             if (geolocationAvailable) {
