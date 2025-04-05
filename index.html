@@ -17,37 +17,38 @@
             font-size: 1.5em;
             margin-bottom: 20px;
         }
-        .number-row {
+        .number-row, .text-row {
             display: flex;
             gap: 10px;
             margin-bottom: 10px;
         }
         .number-input {
-            font-size: 2em;
-            flex: 2;
-            padding: 10px;
+            font-size: 1.5em; /* 減小字體以適應手機螢幕 */
+            flex: 3; /* 與輸入文字對齊 */
+            padding: 8px; /* 統一內邊距 */
+            box-sizing: border-box; /* 確保寬度包含內邊距 */
         }
         .unit-select {
-            flex: 1;
-            padding: 10px;
-        }
-        .text-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
+            flex: 2; /* 與分類對齊 */
+            padding: 8px;
+            box-sizing: border-box;
         }
         .text-input {
-            flex: 2;
+            flex: 3; /* 與數字對齊 */
             padding: 8px;
+            box-sizing: border-box;
         }
         .category-select {
-            flex: 1;
+            flex: 2; /* 與單位對齊 */
             padding: 8px;
+            box-sizing: border-box;
         }
         .remarks {
             width: 100%;
             height: 100px;
             margin-bottom: 10px;
+            padding: 8px;
+            box-sizing: border-box;
         }
         .save-btn {
             width: 100%;
@@ -107,7 +108,7 @@
             padding: 5px;
         }
         .entry.selected {
-            background-color: #f0f0f0; /* 點選時淡淡變色 */
+            background-color: #f0f0f0;
         }
         .edit-form {
             display: none;
@@ -275,7 +276,7 @@
                     div.onclick = () => {
                         selectedEntry = globalIndex;
                         editEntry(globalIndex);
-                        loadData(); // 重新渲染以顯示選中效果
+                        loadData();
                     };
                     if (viewMode === 'simple') {
                         div.innerHTML = `
@@ -427,7 +428,7 @@
             reader.onload = function(e) {
                 const text = e.target.result;
                 const rows = text.split('\n').map(row => row.split(',').map(cell => cell.replace(/^"|"$/g, '')));
-                const headers = rows.shift(); // 移除標題行
+                const headers = rows.shift();
                 entries = rows.map(row => ({
                     number: row[0],
                     unit: row[1],
@@ -436,10 +437,10 @@
                     category: row[4],
                     time: row[5],
                     location: row[6]
-                })).filter(entry => entry.number); // 過濾無效行
+                })).filter(entry => entry.number);
                 localStorage.setItem('entries', JSON.stringify(entries));
                 loadData();
-                document.getElementById('importFile').value = ''; // 重置文件輸入
+                document.getElementById('importFile').value = '';
             };
             reader.readAsText(file);
         }
