@@ -90,6 +90,7 @@
             display: flex;
             border-bottom: 1px solid #ddd;
             padding: 10px 0;
+            cursor: pointer;
         }
         .entry.simple div {
             flex: 1;
@@ -99,17 +100,23 @@
             overflow-x: auto;
         }
         .entry.detailed div {
-            flex: 0 0 120px; /* 增加寬度以顯示更多內容 */
+            flex: 0 0 120px;
             min-width: 120px;
-            white-space: normal; /* 允許換行，避免重疊 */
-            word-wrap: break-word; /* 長詞換行 */
-            padding: 5px; /* 添加內邊距以提高可讀性 */
+            white-space: normal;
+            word-wrap: break-word;
+            padding: 5px;
+        }
+        .entry.selected {
+            background-color: #f0f0f0; /* 點選時淡淡變色 */
         }
         .edit-form {
             display: none;
             padding: 10px;
             border: 1px solid #ccc;
             margin-top: 10px;
+        }
+        .view-controls button {
+            margin-right: 10px;
         }
     </style>
 </head>
@@ -139,6 +146,9 @@
             <label>顯示模式: </label>
             <input type="radio" name="viewMode" value="simple" checked onchange="loadData()"> 簡潔
             <input type="radio" name="viewMode" value="detailed" onchange="loadData()"> 詳細
+            <button onclick="exportData()">匯出</button>
+            <input type="file" id="importFile" accept=".csv" onchange="importData(event)" style="display: inline;">
+            <button onclick="clearData()">清空</button>
         </div>
         <div id="dataList"></div>
         <div id="editForm" class="edit-form">
@@ -162,6 +172,7 @@
         let units = JSON.parse(localStorage.getItem('units')) || ['金額', '時間', 'HKD', 'JPY', 'USD', 'EUR', 'RMB', 'TWD'];
         let lastUnit = localStorage.getItem('lastUnit') || '金額';
         let editIndex = -1;
+        let selectedEntry = null;
 
         // 格式化日期為 YYYY-MM-DD HH:MM:SS
         function formatDate(date) {
@@ -260,8 +271,12 @@
                 grouped[category].forEach((entry, index) => {
                     const globalIndex = entries.indexOf(entry);
                     const div = document.createElement('div');
-                    div.className = `entry ${viewMode}`;
-                    div.onclick = () => editEntry(globalIndex);
+                    div.className = `entry ${viewMode}${globalIndex === selectedEntry ? ' selected' : ''}`;
+                    div.onclick = () => {
+                        selectedEntry = globalIndex;
+                        editEntry(globalIndex);
+                        loadData(); // 重新渲染以顯示選中效果
+                    };
                     if (viewMode === 'simple') {
                         div.innerHTML = `
                             <div>${entry.number} ${entry.unit}</div>
@@ -377,7 +392,77 @@
         // 取消編輯
         function cancelEdit() {
             editIndex = -1;
+            selectedEntry = null;
             document.getElementById('editForm').style.display = 'none';
+        }
+
+        // 匯出資料
+        function exportData() {
+            const now = new Date();
+            const filename = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')} Immeasurable Ledger.csv`;
+            const csv = [
+                ['Number', 'Unit', 'Text', 'Remarks', 'Category', 'Time', 'Location'],
+                ...entries.map(entry => [
+                    entry.number,
+                    entry.unit,
+                    `"${entry.text || ''}"`,
+                    `"${entry.remarks || ''}"`,
+                    entry.category,
+                    entry.time,
+                    entry.location || '未記錄'
+                ])
+            ].map(row => row.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+
+        // 匯入資料
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const rows = text.split('\n').map(row => row.split(',').map(cell => cell.replace(/^"|"$/g, '')));
+                const headers = rows.shift(); // 移除標題行
+                entries = rows.map(row => ({
+                    number: row[0],
+                    unit: row[1],
+                    text: row[2],
+                    remarks: row[3],
+                    category: row[4],
+                    time: row[5],
+                    location: row[6]
+                })).filter(entry => entry.number); // 過濾無效行
+                localStorage.setItem('entries', JSON.stringify(entries));
+                loadData();
+                document.getElementById('importFile').value = ''; // 重置文件輸入
+            };
+            reader.readAsText(file);
+        }
+
+        // 清空資料
+        function clearData() {
+            if (confirm('確定要清空所有資料嗎？此操作無法恢復！\n是否先匯出資料作為備份？')) {
+                exportData();
+                if (confirm('已匯出備份，確認清空所有資料？')) {
+                    entries = [];
+                    categories = ['生活'];
+                    units = ['金額', '時間', 'HKD', 'JPY', 'USD', 'EUR', 'RMB', 'TWD'];
+                    lastCategory = '生活';
+                    lastUnit = '金額';
+                    localStorage.clear();
+                    localStorage.setItem('entries', JSON.stringify(entries));
+                    localStorage.setItem('categories', JSON.stringify(categories));
+                    localStorage.setItem('units', JSON.stringify(units));
+                    localStorage.setItem('lastCategory', lastCategory);
+                    localStorage.setItem('lastUnit', lastUnit);
+                    loadData();
+                }
+            }
         }
 
         // 標籤頁切換
